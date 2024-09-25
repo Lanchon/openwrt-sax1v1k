@@ -172,8 +172,8 @@ fw_setenv boot_write_recovery_from_tftp 'run boot_set_type_initramfs; run boot_s
 
 fw_setenv boot_set_ip 'setenv ipaddr 192.168.1.1; setenv netmask 255.255.255.0; setenv serverip 192.168.1.2'
 
-fw_setenv boot_set_type_initramfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8'
-fw_setenv boot_set_type_squashfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 root=$ROOTFS rootwait'
+fw_setenv boot_set_type_initramfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 $EXTRAARGS'
+fw_setenv boot_set_type_squashfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 root=$ROOTFS rootwait $EXTRAARGS'
 
 
 ## U-Boot hack (WARNING: depends on U-Boot version!)
