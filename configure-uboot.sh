@@ -13,8 +13,19 @@
 # This script can be ran on stock and official OpenWrt firmwares.
 # It is designed to either be copied to the device or be directly pasted on a serial or ssh shell.
 
-# WARNING: Some serial terminals (eg: gtkterm) msibehave if a large piece of text is pasted.
+# WARNING: Some serial terminals (eg: gtkterm) misbehave if a large piece of text is pasted.
 # Use "Send file" or "Send raw file" instead if those commands are available.
+
+# WARNING: The resulting U-Boot configuration reads and/or writes to certain partitions during boot:
+# - #18 'HLOS' (slot 0 kernel)
+# - #19 'HLOS_1' (slot 1 kernel)
+# - #36 'rsvd_5' (recovery OS, with last sector used for the boot interrupt flag)
+# This script verifies that the GPT is exactly as expected before applying the U-Boot configuration,
+# which then accesses these partitions by their absolute sector numbers within the area of the eMMC.
+# If you repartition the device afterwards, make sure you do not modify these partitions in any way.
+
+# WARNING: The Spectrum SAX1V1K has secure boot enabled. If Qualcomm's secure boot chain verifies
+# the GPT (which is likely, it does so on Android) then any repartitioning will brick the device.
 
 
 error() {
@@ -119,6 +130,7 @@ fw_setenv boot_stage2_choose 'if itest *43FFFFFC == 0; then BOOT_NUM=1; run boot
 fw_setenv boot_stage2_try 'run boot_stage2_flag_write; echo; echo "## Info: waiting for boot interrupt #$BOOT_NUM..."; sleep 5 || exit; BOOT_NUM=0; run boot_stage2_flag_write; echo; run boot_stage2_ok'
 fw_setenv boot_stage2_skip 'echo "## Info: max boot interrupt count reached"; BOOT_NUM=0; run boot_stage2_flag_write; echo; run boot_stage2_fail'
 
+# Sector 0x509E21 is the last sector of mmcblk0p36 'rsvd_5' (contains the recovery OS and the boot interrupt flag in its last sector):
 fw_setenv boot_stage2_flag_read 'mmc read 43FFFE00 0x509E21 1; echo "Current boot interrupt flag:"; md 43FFFFF8 2; if itest *43FFFFF8 != B007F1A6; then echo "## Warning: invalid boot flag"; mw 43FFFFF8 B007F1A6 1; mw 43FFFFFC 0 1; fi'
 fw_setenv boot_stage2_flag_write 'mw 43FFFFFC "$BOOT_NUM" 1; echo "Write boot interrupt flag:"; md 43FFFFF8 2; mmc write 43FFFE00 0x509E21 1'
 
@@ -152,11 +164,14 @@ fw_setenv boot_queue_recovery_cancel 'run boot_stage2_flag_read; BOOT_NUM=0; run
 fw_setenv boot_main 'SLOT=0; run boot_slot'
 
 fw_setenv boot_slot 'run boot_set_slot_$SLOT || exit; run boot_set_type_squashfs; run boot_hack; mmc read 44000000 "$KERNEL" 0x4000 && bootm'
+# Sector 0x8A22 is the start of mmcblk0p18 'HLOS' (contains the slot 0 kernel):
 fw_setenv boot_set_slot_0 'KERNEL=0x8A22; ROOTFS=/dev/mmcblk0p20'
+# Sector 0xCA22 is the start of mmcblk0p19 'HLOS_1' (contains the slot 1 kernel):
 fw_setenv boot_set_slot_1 'KERNEL=0xCA22; ROOTFS=/dev/mmcblk0p22'
 
 ### Boot recovery OS
 
+# Sector 0x4F9E22 is the start of mmcblk0p36 'rsvd_5' (contains the recovery OS and the boot interrupt flag in its last sector):
 fw_setenv boot_recovery 'run boot_set_type_initramfs; run boot_hack; mmc read 44000000 0x4F9E22 0x10000 && bootm'
 
 ### Boot from TFTP server
@@ -165,6 +180,7 @@ fw_setenv boot_tftp 'run boot_set_type_initramfs; run boot_set_ip; run boot_hack
 
 ### Write recovery OS partition from TFTP server
 
+# Sector 0x4F9E22 is the start of mmcblk0p36 'rsvd_5' (contains the recovery OS and the boot interrupt flag in its last sector):
 fw_setenv boot_write_recovery_from_tftp 'run boot_set_type_initramfs; run boot_set_ip; run boot_hack; sleep 5 || exit; tftpboot recovery.img || exit; echo; echo "WILL WRITE RECOVERY IN 30s..."; sleep 30 || exit; mmc write 44000000 0x4F9E22 0x10000'
 
 
