@@ -59,7 +59,8 @@ local gpt_hash="$( dd if=/dev/mmcblk0 bs=512 count=34 2> /dev/null | md5sum | cu
 echo "GPT hash: $gpt_hash"
 
 case "$gpt_hash" in
-  56e9617a45826e7e6bb4106e6ad40c59)
+  56e9617a45826e7e6bb4106e6ad40c59|\
+  cadc5e13e8b7c648996a29588a72d349)
     break
     ;;
   *)
