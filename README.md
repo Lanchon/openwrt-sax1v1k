@@ -4,10 +4,10 @@ This repository contains a U-Boot configuration script to safely run official Op
 
 Because this device has secure boot enabled, the boot process cannot be interrupted.
 This meant that any failed upgrade of OpenWrt (due to interruption, a bug in the image, etc) could not be recovered and instantly turned the device into a brick.
-Suck a brick could only be recovered via JTAG; serial access could not do the trick.
-Now this U-Boot configuration script fixes these issues and allows trivial recovery, even without serial access.
+Such a brick could only be recovered via JTAG; serial access could not do the trick.
+This new U-Boot configuration script fixes these issues and allows trivial recovery, even without serial access.
 
-It is heavily based on prior work by:
+This script builds upon prior scripts by:
 - [Paul Francis Nel](https://github.com/MeisterLone/Askey-RT5010W-D187-REV6/blob/master/Patch/open.sh)
 - [Connor Yoon](https://github.com/gotofbi/Qualcommax_NSS_sax1v1k/blob/main/open.sh)
 
