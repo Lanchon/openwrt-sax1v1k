@@ -94,16 +94,30 @@ Follow these installation steps:
    (You can also paste its contents to the terminal instead, but see the warning above.
    Or you can copy the script to the router, `chmod +x` it, and execute it.)
    Follow the prompts and the U-Boot configuration should be installed.
-5. Type `reboot`, then interrupt the boot sequence early when you see the prompt "Hit Ctrl+C for shell..."; you have 2 seconds for that. You are now in the U-Boot shell.
-6. Use a device (eg: your PC) that has a wired Ethernet connection. Set its IP address to `192.168.1.2` and connect it to a LAN port on the router.
-7. Run a TFTP server on it. Host an OpenWrt initramfs image on the server, naming it `recovery.img`.
-8. Type `run boot_write_recovery_from_tftp` on the serial console to have the router download the recovery OS and write it to the recovery partition.
+5. (If step 4 fail) If the `configure-uboot.sh` failed due to unknown bootloder: First, determine which partition contains the known bootloader by checking their hashes:
+   ```sh
+   cat /dev/mmcblk0p15 | md5sum | cut -d' ' -f1
+   cat /dev/mmcblk0p16 | md5sum | cut -d' ' -f1
+   ```
+   - If partition 15 is the correct one, copy it to partition 16:
+   ```sh
+   dd if=/dev/mmcblk0p15 of=/dev/mmcblk0p16
+   ```
+   - If partition 16 is the correct one, copy it to partition 15:
+   ```sh
+   dd if=/dev/mmcblk0p16 of=/dev/mmcblk0p15
+   ```
+   After copying, verify the hashes again to ensure correctness, then reboot the router. Reboot the router and do Step 4 again. If step 4 is successful then,
+6. Type `reboot`, then interrupt the boot sequence early when you see the prompt "Hit Ctrl+C for shell..."; you have 2 seconds for that. You are now in the U-Boot shell.
+7. Use a device (eg: your PC) that has a wired Ethernet connection. Set its IP address to `192.168.1.2` and connect it to a LAN port on the router.
+8. Run a TFTP server on it. Host an OpenWrt initramfs image on the server, naming it `recovery.img`. (Download the Karnel bin file from the https://firmware-selector.openwrt.org and rename it to recovery.img)
+9. Type `run boot_write_recovery_from_tftp` on the serial console to have the router download the recovery OS and write it to the recovery partition.
    You should see the message "WILL WRITE RECOVERY IN 30s..." if the download succeeded; just wait for the script to finish.
-9. Reboot the router. You should see it failing to boot the main OS, then falling back to the recovery OS and succeeding.
+10. Reboot the router. You should see it failing to boot the main OS, then falling back to the recovery OS and succeeding.
    (If the recovery OS is correctly installed, you should not see it attempting a TFTP boot.)
    With the recovery OS running, use your browser to access LuCI at `http://192.168.1.1/`.
    Go to `System`/`Backup / Flash Firmware` and hit `Flash image...` to flash an OpenWrt sysupgrade image as the main OS. Choose to wipe settings during the flash.
-10. Reboot the router and verify that it boots the main OS successfully.
+11. Reboot the router and verify that it boots the main OS successfully.
 
 ### U-Boot Configuration Upgrade
 
