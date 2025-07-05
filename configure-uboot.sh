@@ -91,12 +91,12 @@ case "$uboot0_hash" in
     break
     ;;
   ab709449c98f89cfa57e119b0f37b388)
-    uboot_ver="hash2"
+    uboot_ver="1.3.3 [spf11.1_csu2] Jan 27 2021 (hash2)"
     uboot_hack="mw 4a911044 0a000007 1; mw 4a91dfdc 0a000006 1; go 4a9647cc"
     break
     ;;
   85ae38d2a62b124f431ba5baba6b42ad)
-    uboot_ver="hash3"
+    uboot_ver="1.5.1 [spf11.4_csu2] Jun 15 2022 (hash3)"
     uboot_hack="mw 4a9115c8 0a000007 1; mw 4a91e534 0a000006 1; go 4a966bc4"
     break
     ;;
@@ -104,7 +104,7 @@ case "$uboot0_hash" in
     error "unknown U-Boot hash! dump U-Boot (/dev/mmcblk0p15) and contact support forum"
     ;;
 esac
-echo "found known U-Boot! (version: $uboot_ver)"
+echo "found known U-Boot! version: $uboot_ver"
 echo
 
 # Configure U-Boot environment
