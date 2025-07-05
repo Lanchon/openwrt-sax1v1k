@@ -6,17 +6,17 @@
 # Date: 2024-09-18
 # License: GPL v3 or newer
 
-# This script is heavily based on prior work by:
+# This script builds upon prior scripts by:
 # - Paul Francis Nel (https://github.com/MeisterLone/Askey-RT5010W-D187-REV6/blob/master/Patch/open.sh)
 # - Connor Yoon (https://github.com/gotofbi/Qualcommax_NSS_sax1v1k/blob/main/open.sh)
 
 # This script can be ran on stock and official OpenWrt firmwares.
 # It is designed to either be copied to the device or be directly pasted on a serial or ssh shell.
 
-# WARNING: Some serial terminals (eg: gtkterm) misbehave if a large piece of text is pasted.
-# Use "Send file" or "Send raw file" instead if those commands are available.
+# WARNING: Some serial terminals (eg: gtkterm) misbehave if a large volume of text is pasted.
+# If available, prefer to use commands such as "send file", "send raw file", or equivalent.
 
-# WARNING: The resulting U-Boot configuration reads and/or writes to certain partitions during boot:
+# WARNING: The applied U-Boot configuration reads and/or writes to certain partitions during boot:
 # - #18 'HLOS' (slot 0 kernel)
 # - #19 'HLOS_1' (slot 1 kernel)
 # - #36 'rsvd_5' (recovery OS, with last sector used for the boot interrupt flag)
@@ -25,8 +25,8 @@
 # If you repartition the device afterwards, make sure you do not modify these partitions in any way.
 
 # WARNING: The Spectrum SAX1V1K has secure boot enabled. If Qualcomm's secure boot chain verifies
-# the GPT (which is likely, it does so on Android) then any repartitioning will brick the device.
-
+# the GPT, then any change at all in the GPT will brick the device. (Note that Qualcomm's secure
+# boot chain for Android indeed verifies the GPT.)
 
 error() {
   echo
