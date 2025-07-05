@@ -86,7 +86,7 @@ local uboot_ver
 local uboot_hack
 case "$uboot0_hash" in
   f3066582267c857e24097b4aecd3e9a1)
-    uboot_ver="hash1"
+    uboot_ver="1.3.3 [spf11.1_csu2] Dec 09 2020 (hash1)"
     uboot_hack="mw 4a910cd0 0a000007 1; mw 4a91dc6c 0a000006 1; go 4a96433c"
     break
     ;;
