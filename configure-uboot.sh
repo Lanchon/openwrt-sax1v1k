@@ -87,27 +87,27 @@ local uboot_ver
 local uboot_hack
 case "$uboot0_hash" in
   f3066582267c857e24097b4aecd3e9a1)
-    uboot_ver="1.3.3 [spf11.1_csu2] Dec 09 2020 (hash1)"
+    uboot_ver="1.3.3 [spf11.1_csu2] Dec 09 2020 (variant f306)"
     uboot_hack="mw 4a910cd0 0a000007 1; mw 4a91dc6c 0a000006 1; go 4a96433c"
     break
     ;;
   ab709449c98f89cfa57e119b0f37b388)
-    uboot_ver="1.3.3 [spf11.1_csu2] Jan 27 2021 (hash2)"
+    uboot_ver="1.3.3 [spf11.1_csu2] Jan 27 2021 (variant ab70)"
     uboot_hack="mw 4a911044 0a000007 1; mw 4a91dfdc 0a000006 1; go 4a9647cc"
     break
     ;;
   d75be109e242ee8923cb45f1cb082f83)
-    uboot_ver="1.3.3 [spf11.1_csu2] Apr 22 2021 (hash4, untested)"
+    uboot_ver="1.3.3 [spf11.1_csu2] Apr 22 2021 (variant d75b, untested)"
     uboot_hack="mw 4a910f88 0a000007 1; mw 4a91df24 0a000006 1; go 4a964714"
     break
     ;;
   7bc2f7766b270ea120495334cd1e5c56)
-    uboot_ver="1.5.0 [spf11.4_csu1] Feb 24 2022 (hash5, untested)"
+    uboot_ver="1.5.0 [spf11.4_csu1] Feb 24 2022 (untested)"
     uboot_hack="mw 4a9115a8 0a000007 1; mw 4a91e514 0a000006 1; go 4a966ba4"
     break
     ;;
   85ae38d2a62b124f431ba5baba6b42ad)
-    uboot_ver="1.5.1 [spf11.4_csu2] Jun 15 2022 (hash3)"
+    uboot_ver="1.5.1 [spf11.4_csu2] Jun 15 2022"
     uboot_hack="mw 4a9115c8 0a000007 1; mw 4a91e534 0a000006 1; go 4a966bc4"
     break
     ;;
