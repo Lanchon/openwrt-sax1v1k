@@ -46,6 +46,27 @@ pause() {
   echo
 }
 
+# Hashes main GPT skipping header CRCs and partition GUIDs
+# Assumes standard GPT size with 128 entries of 128 bytes each
+hash_gpt() {
+  {
+    dd bs=1 count=$(( 0x210 )) 2> /dev/null
+    dd bs=1 skip=4 count=0 2> /dev/null     # skip CRC at 0x210
+    dd bs=1 count=$(( 0x258 - 0x214 )) 2> /dev/null
+    dd bs=1 skip=4 count=0 2> /dev/null     # skip CRC at 0x258
+    dd bs=1 count=$(( 0x400 - 0x25c )) 2> /dev/null
+
+    # entries in partition array at 0x400
+    n=$(( (0x4400 - 0x400) / 0x80 ))
+    while [ $n != 0 ]; do
+      dd bs=1 count=$(( 0x10 )) 2> /dev/null
+      dd bs=1 skip=16 count=0 2> /dev/null  # skip GUID at 0x10
+      dd bs=1 count=$(( 0x60 )) 2> /dev/null
+      n=$(( n - 1 ))
+    done
+  } | md5sum | cut -d' ' -f1
+}
+
 configure_uboot() {
 
 echo
@@ -55,13 +76,11 @@ echo
 
 # Check GPT
 
-local gpt_hash="$( dd if=/dev/mmcblk0 bs=512 count=34 2> /dev/null | md5sum | cut -d' ' -f1 )"
-echo "GPT hash: $gpt_hash"
+local gpt_hash="$( dd if=/dev/mmcblk0 bs=512 count=34 2> /dev/null | hash_gpt )"
+echo "generalized GPT hash: $gpt_hash"
 
 case "$gpt_hash" in
-  56e9617a45826e7e6bb4106e6ad40c59|\
-  cadc5e13e8b7c648996a29588a72d349|\
-  d7bfffc46f1e55d7e3c47b6b7f7563fa)
+  c91c4fcf647afb683cceab7ac5c54e96)
     break
     ;;
   *)
