@@ -60,7 +60,8 @@ echo "GPT hash: $gpt_hash"
 
 case "$gpt_hash" in
   56e9617a45826e7e6bb4106e6ad40c59|\
-  cadc5e13e8b7c648996a29588a72d349)
+  cadc5e13e8b7c648996a29588a72d349|\
+  d7bfffc46f1e55d7e3c47b6b7f7563fa)
     break
     ;;
   *)
