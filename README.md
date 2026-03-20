@@ -161,5 +161,6 @@ When the boot interrupt flag is valid, it contains the 32-bit words `B007F1A6 00
 (The 2 words are written as 8 little endian bytes, ie: `A6 F1 07 B0  nn 00 00 00`.)
 You can schedule a recovery boot for next boot by writing the 32-bit words `B007F1A6 000000FF` to the flag, and cancel it by writing `B007F1A6 00000000`.
 
-Until [this OpenWrt issue](https://github.com/openwrt/fstools/pull/9) is resolved, the loader will not support A/B (a.k.a. dual slot, dual firmware) sysupgrades.
+[This OpenWrt PR](https://github.com/openwrt/fstools/pull/9) was finally merged, and the loader now correctly supports dual firmware slots.
+It is now possible to develop OpenWrt and loader support for A/B dual firmware sysupgrades.
 

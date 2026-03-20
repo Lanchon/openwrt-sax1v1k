@@ -201,9 +201,9 @@ fw_setenv boot_main 'SLOT=0; run boot_slot'
 
 fw_setenv boot_slot 'run boot_set_slot_$SLOT || exit; run boot_set_type_squashfs; run boot_hack; mmc read 44000000 "$KERNEL" 0x4000 && bootm'
 # Sector 0x8A22 is the start of mmcblk0p18 'HLOS' (contains the slot 0 kernel):
-fw_setenv boot_set_slot_0 'KERNEL=0x8A22; ROOTFS=/dev/mmcblk0p20'
+fw_setenv boot_set_slot_0 'KERNEL=0x8A22; ROOTFS=/dev/mmcblk0p20; OVERLAY=rootfs_data'
 # Sector 0xCA22 is the start of mmcblk0p19 'HLOS_1' (contains the slot 1 kernel):
-fw_setenv boot_set_slot_1 'KERNEL=0xCA22; ROOTFS=/dev/mmcblk0p22'
+fw_setenv boot_set_slot_1 'KERNEL=0xCA22; ROOTFS=/dev/mmcblk0p22; OVERLAY=rootfs_data_1'
 
 ### Boot recovery OS
 
@@ -225,7 +225,7 @@ fw_setenv boot_write_recovery_from_tftp 'run boot_set_type_initramfs; run boot_s
 fw_setenv boot_set_ip 'setenv ipaddr 192.168.1.1; setenv netmask 255.255.255.0; setenv serverip 192.168.1.2'
 
 fw_setenv boot_set_type_initramfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 $EXTRAARGS'
-fw_setenv boot_set_type_squashfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 root=$ROOTFS rootwait $EXTRAARGS'
+fw_setenv boot_set_type_squashfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 root=$ROOTFS rootwait fstools_overlay_name=$OVERLAY $EXTRAARGS'
 
 
 ## U-Boot hack (WARNING: depends on U-Boot version!)
