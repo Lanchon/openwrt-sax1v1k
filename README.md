@@ -11,24 +11,36 @@ This script builds upon prior scripts by:
 - [Paul Francis Nel](https://github.com/MeisterLone/Askey-RT5010W-D187-REV6/blob/master/Patch/open.sh)
 - [Connor Yoon](https://github.com/gotofbi/Qualcommax_NSS_sax1v1k/blob/main/open.sh)
 
+> [!IMPORTANT]
+> There has been a major upgrade to the loader script.
+> The old version kept track of boot attempts and triggered recovery after a number of consecutive interrupted boots were detected.
+> The new version instead uses the state of the RESET button to choose a boot path.
+> 
+> U-Boot on this device does not support the `gpio` command which is typically used to read button states,
+> but the script solves this issue by accessing the TLMM GPIO controller hardware directly.
+> For reference, the old version of the script that detects boot interrupts is available in the
+> [`boot-interrupt`](https://github.com/Lanchon/openwrt-sax1v1k/tree/boot-interrupt) branch.
+
 ## The U-Boot Configuration Script
 
 The script is intended to be run:
 - under stock firmware during initial installation of OpenWrt (untested by me, but should work)
 - under official OpenWrt firmware to upgrade the U-Boot configuration (tested)
 
-**WARNING:** The applied U-Boot configuration reads and/or writes to certain partitions during boot:
-- #18 `HLOS` (slot 0 kernel)
-- #19 `HLOS_1` (slot 1 kernel)
-- #36 `rsvd_5` (recovery OS, with last sector used for the boot interrupt flag)
+> [!WARNING]
+> The applied U-Boot configuration reads and/or writes to certain partitions during boot:
+> - #18 `HLOS` (slot 0 kernel)
+> - #19 `HLOS_1` (slot 1 kernel)
+> - #36 `rsvd_5` (recovery OS)
+> 
+> This script verifies that the GPT is exactly as expected before applying the U-Boot configuration,
+> which then accesses these partitions during boot by their absolute sector numbers within the area of the eMMC.
+> **If you repartition the device afterwards, make sure you do not modify these partitions in any way.**
 
-This script verifies that the GPT is exactly as expected before applying the U-Boot configuration,
-which then accesses these partitions during boot by their absolute sector numbers within the area of the eMMC.
-**If you repartition the device afterwards, make sure you do not modify these partitions in any way.**
-
-**WARNING:** The Spectrum SAX1V1K has secure boot enabled.
-If Qualcomm's secure boot chain verifies the GPT, then any change at all in the GPT will brick the device.
-(Note that Qualcomm's secure boot chain for Android indeed verifies the GPT.)
+> [!WARNING]
+> The Spectrum SAX1V1K has secure boot enabled.
+> If Qualcomm's secure boot chain verifies the GPT, then any change at all in the GPT will brick the device.
+> (Note that Qualcomm's secure boot chain for Android indeed verifies the GPT.)
 
 ## The Loader Script
 
@@ -38,30 +50,24 @@ The applied U-Boot configuration includes a loader script that behaves as follow
   - the main OS (a regular OpenWrt image)
   - the recovery OS (an initramfs image)
   - an OS image provided via TFTP
-- Lets you force a recovery OS boot (or TFTP boot if that fails), at any time and without serial access.
+- Lets you force a recovery OS boot (or TFTP boot if that fails) at any time without serial access.
 
-### Safety
-
-The loader does some minimal writing to the eMMC during each boot. This is safe for the following reasons:
-- The loader never writes to the U-Boot environment. Thus, bricking by U-Boot environment corruption due to interrupted writes is impossible.
-- It only writes to the last sector of the recovery OS partition, and automatically recovers from eventual corruption in this sector.
-- There is no issue with flash wear:
-  - Writing to small MTD partitions often can potentially wear them out quickly. But eMMCs work differently, they do wear-leveling on the complete flash area via their embedded FTL.
-  - Small volume writes to an eMMC are completely safe, just as OpenWrt mounting the read/write overlay on every boot, or booting a regular PC with an SSD.
+The loader script now supports dual firmware slots, complete with dual overlay filesystems.
+However, official OpenWrt does not yet support A/B dual firmware sysupgrades for this device.
+This support could be added later, but it would require an OpenWrt version newer than 25.12 series.
 
 ### The Boot Sequence
 
-During boot you will see this sequence of flashes on the device LED:
-- 3x 1-second LED flashes: early boot.
-- 2-second LED OFF: wait for shell request.
-  - Type Ctrl+C on the serial console during this stage to interrupt the boot sequence and gain access to the U-Boot shell.
-- 5-second LED ON: wait for boot interrupt.
-  - Unplug the device (or type Ctrl+C on the console) during this stage to signal a "boot interrupt" (see below).
-- More LED flashing as the device continues to boot.
+The loader script provides a brief window in which you can type Ctrl+C on the serial console to interrupt the boot sequence and drop to U-Boot shell.
 
-In order to boot the recovery OS without serial access (or boot via TFTP if the recovery OS image is corrupt or missing), you need to **force three boot interrupts in a row**.
-Any non-interrupted boot will reset the count. After 3 consecutive boot interrupts, the next boot will skip the 5-second LED ON stage and boot to recovery (or via TFTP if recovery is missing or corrupt).
-After this single recovery boot, the device will revert to booting the main OS normally.
+The device LED flashes along during normal boot.
+To force a non-standard boot, hold down the RESET button while you power up the device until the LED displays a solid blue color.
+At this point the boot process has been paused: release RESET and the device will turn off the LED and wait.
+
+Now you can:
+- Either click RESET to boot the recovery OS.
+- Or hold down RESET to switch the currently active firmware slot before booting the main OS.
+  (This allows you to roll back an upgrade, assuming that the main OS supports A/B upgrades.)
 
 ### TFTP Boot
 
@@ -132,16 +138,12 @@ To upgrade or install the recovery OS:
 
 If you connect to the serial console and drop to the U-Boot shell, you have several commands available:
 
-- Control queuing of recovery OS for next boot:
-  - `run boot_queue_recovery`: queue recovery on next boot
-  - `run boot_queue_recovery_cancel`: cancel the pending recovery request
-
 - Boot an OS:
   - `run boot_main`: boot the main OS
   - `run boot_recovery`: boot the recovery OS
   - `run boot_tftp`: boot via TFTP
 
-- Boot a specific slot of the main OS (but see [this](https://github.com/openwrt/fstools/pull/9)):
+- Boot a specific slot of the main OS:
   - `SLOT=0; run boot_slot`: boot slot 0
   - `SLOT=1; run boot_slot`: boot slot 1
 
@@ -154,13 +156,10 @@ Note that you can configure the IP addresses used for TFTP by editing the `boot_
 
 The recovery OS is stored in `/dev/mmcblk0p36` which is an unused 32 MiB partition with label `rsvd_5`. In stock firmware this partition is empty (all bytes are `0xFF`).
 
-The last 8 bytes of the last sector of this partition is where the boot interrupt flag is stored.
-It is used to keep track of interrupted boots and divert to recovery after the third consecutive interruption.
+[This OpenWrt PR](https://github.com/openwrt/fstools/pull/9) was finally merged, and the loader now correctly supports dual firmware slots, complete with dual overlay filesystems.
+It is now possible to develop OpenWrt support for A/B dual firmware sysupgrades.
+OpenWrt can detect loader support for dual firmware by cheking that the `boot_dual_slot_support` U-Boot variable is set to `1`.
+If dual firmware slots are enabled, the currently active boot slot (`0` or `1`) is stored in the `boot_active_slot` U-Boot variable.
+Dual firmware support can be disabled by clearing these two variables.
 
-When the boot interrupt flag is valid, it contains the 32-bit words `B007F1A6 000000nn`, where `nn` is the number of consecutive interrupted boots experienced so far.
-(The 2 words are written as 8 little endian bytes, ie: `A6 F1 07 B0  nn 00 00 00`.)
-You can schedule a recovery boot for next boot by writing the 32-bit words `B007F1A6 000000FF` to the flag, and cancel it by writing `B007F1A6 00000000`.
-
-[This OpenWrt PR](https://github.com/openwrt/fstools/pull/9) was finally merged, and the loader now correctly supports dual firmware slots.
-It is now possible to develop OpenWrt and loader support for A/B dual firmware sysupgrades.
 

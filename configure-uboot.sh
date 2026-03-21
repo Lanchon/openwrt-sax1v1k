@@ -19,7 +19,7 @@
 # WARNING: The applied U-Boot configuration reads and/or writes to certain partitions during boot:
 # - #18 'HLOS' (slot 0 kernel)
 # - #19 'HLOS_1' (slot 1 kernel)
-# - #36 'rsvd_5' (recovery OS, with last sector used for the boot interrupt flag)
+# - #36 'rsvd_5' (recovery OS)
 # This script verifies that the GPT is exactly as expected before applying the U-Boot configuration,
 # which then accesses these partitions by their absolute sector numbers within the area of the eMMC.
 # If you repartition the device afterwards, make sure you do not modify these partitions in any way.
@@ -158,20 +158,14 @@ fi
 fw_setenv boot_stage1 'echo "Hit Ctrl+C for shell..."; sleep 2 || exit; run boot_stage1_ok'
 fw_setenv boot_stage1_ok 'run boot_stage2'
 
-### Stage 2: Choose main or recovery OS based on history boot interruptions
+### Stage 2: Choose boot path based on state of RESET button
 
-fw_setenv boot_stage2 'run boot_stage2_flag_read; run boot_stage2_choose'
+fw_setenv boot_stage2 'if itest *1022004 == 0; then echo "## Info: button pressed, boot paused"; base; sleep 1; while itest *1022004 == 0; do true; done; base; run boot_stage2_pause; else echo "## Info: button not pressed"; run boot_stage2_button_none; fi'
+fw_setenv boot_stage2_pause 'echo "Click button for recovery, hold for active boot slot switch..."; while itest *1022004 != 0; do true; done; base; sleep 3; if itest *1022004 == 0; then run boot_stage2_button_hold; else run boot_stage2_button_click; fi'
 
-fw_setenv boot_stage2_choose 'if itest *43FFFFFC == 0; then BOOT_NUM=1; run boot_stage2_try; elif itest *43FFFFFC == 1; then BOOT_NUM=2; run boot_stage2_try; elif itest *43FFFFFC == 2; then BOOT_NUM=3; run boot_stage2_try; else run boot_stage2_skip; fi'
-fw_setenv boot_stage2_try 'run boot_stage2_flag_write; echo; echo "## Info: waiting for boot interrupt #$BOOT_NUM..."; sleep 5 || exit; BOOT_NUM=0; run boot_stage2_flag_write; echo; run boot_stage2_ok'
-fw_setenv boot_stage2_skip 'echo "## Info: max boot interrupt count reached"; BOOT_NUM=0; run boot_stage2_flag_write; echo; run boot_stage2_fail'
-
-# Sector 0x509E21 is the last sector of mmcblk0p36 'rsvd_5' (contains the recovery OS and the boot interrupt flag in its last sector):
-fw_setenv boot_stage2_flag_read 'mmc read 43FFFE00 0x509E21 1; echo "Current boot interrupt flag:"; md 43FFFFF8 2; if itest *43FFFFF8 != B007F1A6; then echo "## Warning: invalid boot flag"; mw 43FFFFF8 B007F1A6 1; mw 43FFFFFC 0 1; fi'
-fw_setenv boot_stage2_flag_write 'mw 43FFFFFC "$BOOT_NUM" 1; echo "Write boot interrupt flag:"; md 43FFFFF8 2; mmc write 43FFFE00 0x509E21 1'
-
-fw_setenv boot_stage2_ok 'run boot_stage3'
-fw_setenv boot_stage2_fail 'run boot_stage4'
+fw_setenv boot_stage2_button_none 'run boot_stage3'
+fw_setenv boot_stage2_button_click 'run boot_stage4'
+fw_setenv boot_stage2_button_hold 'run boot_switch_active_slot && run boot_stage3'
 
 ### Stage 3: Attempt to boot main OS, or continue to recovery OS on error
 
@@ -190,11 +184,6 @@ fw_setenv boot_stage5 'echo "## Info: booting via TFTP..."; sleep 1 || exit; run
 
 ## Manual commands
 
-### Control queuing of recovery OS for next boot
-
-fw_setenv boot_queue_recovery 'run boot_stage2_flag_read; BOOT_NUM=FF; run boot_stage2_flag_write'
-fw_setenv boot_queue_recovery_cancel 'run boot_stage2_flag_read; BOOT_NUM=0; run boot_stage2_flag_write'
-
 ### Boot main OS
 
 fw_setenv boot_main 'if "$boot_active_slot" == "1"; then SLOT=1; else SLOT=0; fi; run boot_slot'
@@ -204,6 +193,9 @@ fw_setenv boot_slot 'run boot_set_slot_$SLOT || exit; run boot_set_type_squashfs
 fw_setenv boot_set_slot_0 'KERNEL=0x8A22; ROOTFS=/dev/mmcblk0p20; OVERLAY=rootfs_data'
 # Sector 0xCA22 is the start of mmcblk0p19 'HLOS_1' (contains the slot 1 kernel):
 fw_setenv boot_set_slot_1 'KERNEL=0xCA22; ROOTFS=/dev/mmcblk0p22; OVERLAY=rootfs_data_1'
+
+fw_setenv boot_switch_active_slot 'if run boot_switch_active_slot_ram && saveenv; then echo "## Info: switched active boot slot to: $boot_active_slot"; else echo "## Error: could not switch active boot slot"; false; fi'
+fw_setenv boot_switch_active_slot_ram 'if test "$boot_active_slot" = 1; then setenv boot_active_slot 0; elif test "$boot_active_slot" = 0; then setenv boot_active_slot 1; else false; fi'
 
 ### Boot recovery OS
 
@@ -226,6 +218,11 @@ fw_setenv boot_set_ip 'setenv ipaddr 192.168.1.1; setenv netmask 255.255.255.0; 
 
 fw_setenv boot_set_type_initramfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 $EXTRAARGS'
 fw_setenv boot_set_type_squashfs 'setenv loadaddr 44000000; setenv bootargs console=ttyMSM0,115200n8 root=$ROOTFS rootwait fstools_overlay_name=$OVERLAY $EXTRAARGS'
+
+
+## Signal dual firmware slot support
+
+fw_setenv boot_dual_slot_support '1'
 
 
 ## U-Boot hack (WARNING: depends on U-Boot version!)
@@ -285,6 +282,35 @@ if fw_printenv setup_and_boot > /dev/null 2>&1; then
 
 fi
 
+if fw_printenv boot_stage2_flag_read > /dev/null 2>&1; then
+
+  echo "it seems that this device has older boot code configured"
+  echo
+  echo "the code in these U-Boot variables is no longer needed:"
+  echo "  boot_queue_recovery, boot_queue_recovery_cancel,"
+  echo "  boot_stage2_flag_read, boot_stage2_flag_write,"
+  echo "  boot_stage2_choose, boot_stage2_try, boot_stage2_skip,"
+  echo "  boot_stage2_ok, boot_stage2_fail"
+  echo
+
+  pause "do you want to delete this variables? (recommended)"
+
+  fw_setenv boot_queue_recovery
+  fw_setenv boot_queue_recovery_cancel
+  fw_setenv boot_stage2_flag_read
+  fw_setenv boot_stage2_flag_write
+  fw_setenv boot_stage2_choose
+  fw_setenv boot_stage2_try
+  fw_setenv boot_stage2_skip
+  fw_setenv boot_stage2_ok
+  fw_setenv boot_stage2_fail
+
+  echo "success!"
+  echo
+  echo
+
+fi
+
 # Notes
 
 echo "notes:"
@@ -297,7 +323,6 @@ echo "- 'ctrl+c' during boot to access the U-Boot shell"
 echo "- 'run boot_tftp' to boot via TFTP"
 echo "- 'run boot_write_recovery_from_tftp' to flash the recovery OS"
 echo "- 'run boot_recovery' to boot the recovery OS now"
-echo "- 'run boot_queue_recovery' to queue recovery for next boot"
 echo
 echo "in OpenWrt you can flash a recovery image by typing:"
 echo "- 'dd if=recovery.img of=/dev/mmcblk0p36'"
