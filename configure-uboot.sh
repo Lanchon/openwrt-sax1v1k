@@ -197,7 +197,7 @@ fw_setenv boot_queue_recovery_cancel 'run boot_stage2_flag_read; BOOT_NUM=0; run
 
 ### Boot main OS
 
-fw_setenv boot_main 'SLOT=0; run boot_slot'
+fw_setenv boot_main 'if "$boot_active_slot" == "1"; then SLOT=1; else SLOT=0; fi; run boot_slot'
 
 fw_setenv boot_slot 'run boot_set_slot_$SLOT || exit; run boot_set_type_squashfs; run boot_hack; mmc read 44000000 "$KERNEL" 0x4000 && bootm'
 # Sector 0x8A22 is the start of mmcblk0p18 'HLOS' (contains the slot 0 kernel):
