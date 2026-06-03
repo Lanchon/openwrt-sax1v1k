@@ -30,7 +30,7 @@
 
 error() {
   echo
-  echo "ERROR:" "$@"
+  echo -e "ERROR:" "$@"
   echo "press ctrl+c to stop..."
   cat > /dev/null
   echo
@@ -38,7 +38,7 @@ error() {
 }
 
 pause() {
-  echo "WARNING:" "$@"
+  echo -e "WARNING:" "$@"
   echo "enter 'yes' to continue or ctrl+c to stop..."
   while true; do
     if [[ "$( head -n1 )" == "yes" ]]; then break; fi
@@ -84,23 +84,24 @@ case "$gpt_hash" in
     break
     ;;
   *)
-    error "unknown GPT hash! dump GPT and contact support forum"
+    error "unknown generalized GPT hash\n""dump GPT (first 17408 bytes of /dev/mmcblk0) and contact support forum"
     ;;
 esac
-echo "found known GPT!"
+echo "found known GPT"
 echo
 
 # Check U-Boot
 
 local uboot0_hash="$( cat /dev/mmcblk0p15 | md5sum | cut -d' ' -f1 )"
 local uboot1_hash="$( cat /dev/mmcblk0p16 | md5sum | cut -d' ' -f1 )"
-echo "U-Boot slot 0 hash: $uboot0_hash"
-echo "U-Boot slot 1 hash: $uboot1_hash"
 
 if [[ "$uboot0_hash" != "$uboot1_hash" ]]; then
-    error "U-Boot hashes for slots 0 and 1 do not match! contact support forum"
+  echo "U-Boot slot 0 hash: $uboot0_hash"
+  echo "U-Boot slot 1 hash: $uboot1_hash"
+  error "contents of U-Boot slots 0 and 1 do not match\n""contact support forum"
 fi
-echo "U-Boot hashes for slots 0 and 1 match"
+echo "contents of U-Boot slots 0 and 1 match"
+echo "U-Boot hash: $uboot0_hash"
 
 local uboot_ver
 local uboot_hack
@@ -136,10 +137,11 @@ case "$uboot0_hash" in
     break
     ;;
   *)
-    error "unknown U-Boot hash! dump U-Boot (/dev/mmcblk0p15) and contact support forum"
+    error "unknown U-Boot hash\n""dump U-Boot (/dev/mmcblk0p15) and contact support forum"
     ;;
 esac
-echo "found known U-Boot! version: $uboot_ver"
+echo "found known U-Boot"
+echo "U-Boot version: $uboot_ver"
 echo
 
 # Configure U-Boot environment
@@ -230,7 +232,7 @@ fw_setenv boot_dual_slot_support '1'
 fw_setenv boot_hack "$uboot_hack"
 
 
-echo "success!"
+echo "success"
 echo
 echo
 
@@ -253,7 +255,7 @@ if [[ "$( fw_printenv bootcmd )" != "bootcmd=$bootcmd" ]]; then
 
   fw_setenv bootcmd "$bootcmd"
 
-  echo "success!"
+  echo "success"
   echo
   echo
 
@@ -269,14 +271,14 @@ if fw_printenv setup_and_boot > /dev/null 2>&1; then
   echo "  fix_uboot, read_hlos_emmc, set_custom_bootargs, setup_and_boot"
   echo
 
-  pause "do you want to delete this variables? (recommended)"
+  pause "do you want to delete these variables? (recommended)"
 
   fw_setenv fix_uboot
   fw_setenv read_hlos_emmc
   fw_setenv set_custom_bootargs
   fw_setenv setup_and_boot
 
-  echo "success!"
+  echo "success"
   echo
   echo
 
@@ -293,7 +295,7 @@ if fw_printenv boot_stage2_flag_read > /dev/null 2>&1; then
   echo "  boot_stage2_ok, boot_stage2_fail"
   echo
 
-  pause "do you want to delete this variables? (recommended)"
+  pause "do you want to delete these variables? (recommended)"
 
   fw_setenv boot_queue_recovery
   fw_setenv boot_queue_recovery_cancel
@@ -305,7 +307,7 @@ if fw_printenv boot_stage2_flag_read > /dev/null 2>&1; then
   fw_setenv boot_stage2_ok
   fw_setenv boot_stage2_fail
 
-  echo "success!"
+  echo "success"
   echo
   echo
 
@@ -322,7 +324,7 @@ echo "if you have serial console access you can type:"
 echo "- 'ctrl+c' during boot to access the U-Boot shell"
 echo "- 'run boot_tftp' to boot via TFTP"
 echo "- 'run boot_write_recovery_from_tftp' to flash the recovery OS"
-echo "- 'run boot_recovery' to boot the recovery OS now"
+echo "- 'run boot_recovery' to boot the recovery OS"
 echo
 echo "in OpenWrt you can flash a recovery image by typing:"
 echo "- 'dd if=recovery.img of=/dev/mmcblk0p36'"
