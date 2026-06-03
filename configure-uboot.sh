@@ -67,6 +67,14 @@ hash_gpt() {
   } | md5sum | cut -d' ' -f1
 }
 
+get_uboot_version_string() {
+  if [[ "$( strings -n10 "$1" | grep -E "U-Boot [0-9]+[.][0-9]+" | wc -l )" == "1" ]]; then
+    strings -n10 "$1" | grep -E "U-Boot [0-9]+[.][0-9]+"
+  else
+    echo "unknown"
+  fi
+}
+
 configure_uboot() {
 
 echo
@@ -96,43 +104,46 @@ local uboot0_hash="$( cat /dev/mmcblk0p15 | md5sum | cut -d' ' -f1 )"
 local uboot1_hash="$( cat /dev/mmcblk0p16 | md5sum | cut -d' ' -f1 )"
 
 if [[ "$uboot0_hash" != "$uboot1_hash" ]]; then
-  echo "U-Boot slot 0 hash: $uboot0_hash"
-  echo "U-Boot slot 1 hash: $uboot1_hash"
+  echo "U-Boot version string, slot 0: $( get_uboot_version_string /dev/mmcblk0p15 )"
+  echo "U-Boot version string, slot 1: $( get_uboot_version_string /dev/mmcblk0p16 )"
+  echo "U-Boot hash, slot 0: $uboot0_hash"
+  echo "U-Boot hash, slot 1: $uboot1_hash"
   error "contents of U-Boot slots 0 and 1 do not match\n""contact support forum"
 fi
 echo "contents of U-Boot slots 0 and 1 match"
+echo "U-Boot version string: $( get_uboot_version_string /dev/mmcblk0p15 )"
 echo "U-Boot hash: $uboot0_hash"
 
-local uboot_ver
+local uboot_label
 local uboot_hack
 case "$uboot0_hash" in
   f3066582267c857e24097b4aecd3e9a1)
-    uboot_ver="1.3.3 [spf11.1_csu2] Dec 09 2020 (variant f306)"
+    uboot_label="1.3.3 [spf11.1_csu2] Dec 09 2020 (variant f306)"
     uboot_hack="mw 4a910cd0 0a000007 1; mw 4a91dc6c 0a000006 1; go 4a96433c"
     break
     ;;
   ab709449c98f89cfa57e119b0f37b388)
-    uboot_ver="1.3.3 [spf11.1_csu2] Jan 27 2021 (variant ab70)"
+    uboot_label="1.3.3 [spf11.1_csu2] Jan 27 2021 (variant ab70)"
     uboot_hack="mw 4a911044 0a000007 1; mw 4a91dfdc 0a000006 1; go 4a9647cc"
     break
     ;;
   d75be109e242ee8923cb45f1cb082f83)
-    uboot_ver="1.3.3 [spf11.1_csu2] Apr 22 2021 (variant d75b, untested)"
+    uboot_label="1.3.3 [spf11.1_csu2] Apr 22 2021 (variant d75b, untested)"
     uboot_hack="mw 4a910f88 0a000007 1; mw 4a91df24 0a000006 1; go 4a964714"
     break
     ;;
   7bc2f7766b270ea120495334cd1e5c56)
-    uboot_ver="1.5.0 [spf11.4_csu1] Feb 24 2022 (untested)"
+    uboot_label="1.5.0 [spf11.4_csu1] Feb 24 2022 (untested)"
     uboot_hack="mw 4a9115a8 0a000007 1; mw 4a91e514 0a000006 1; go 4a966ba4"
     break
     ;;
   85ae38d2a62b124f431ba5baba6b42ad)
-    uboot_ver="1.5.1 [spf11.4_csu2] Jun 15 2022"
+    uboot_label="1.5.1 [spf11.4_csu2] Jun 15 2022"
     uboot_hack="mw 4a9115c8 0a000007 1; mw 4a91e534 0a000006 1; go 4a966bc4"
     break
     ;;
   baf03dfc53dde25c54a351091ae48b84)
-    uboot_ver="1.5.9 [spf11.5_cs] Aug 19 2024 (untested)"
+    uboot_label="1.5.9 [spf11.5_cs] Aug 19 2024 (untested)"
     uboot_hack="mw 4a912258 0a000007 1; mw 4a91f1c8 0a000006 1; go 4a9679f0"
     break
     ;;
@@ -141,7 +152,7 @@ case "$uboot0_hash" in
     ;;
 esac
 echo "found known U-Boot"
-echo "U-Boot version: $uboot_ver"
+echo "U-Boot label: $uboot_label"
 echo
 
 # Configure U-Boot environment
