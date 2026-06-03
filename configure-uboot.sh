@@ -111,20 +111,36 @@ echo "U-Boot active slot: ${uboot_slot:-"unknown"}"
 local uboot0_hash="$( cat /dev/mmcblk0p15 | md5sum | cut -d' ' -f1 )"
 local uboot1_hash="$( cat /dev/mmcblk0p16 | md5sum | cut -d' ' -f1 )"
 
+local uboot_hash
+local uboot_part
+local uboot_copy_cmd=""
 if [[ "$uboot0_hash" != "$uboot1_hash" ]]; then
+  echo "contents of U-Boot slots 0 and 1 do not match"
   echo "U-Boot version string, slot 0: $( get_uboot_version_string /dev/mmcblk0p15 )"
   echo "U-Boot version string, slot 1: $( get_uboot_version_string /dev/mmcblk0p16 )"
   echo "U-Boot hash, slot 0: $uboot0_hash"
   echo "U-Boot hash, slot 1: $uboot1_hash"
-  error "contents of U-Boot slots 0 and 1 do not match\n""contact support forum"
+  case "$uboot_slot" in
+    0) uboot_hash="$uboot0_hash" ;;
+    1) uboot_hash="$uboot1_hash" ;;
+    *) error "U-Boot slots differ and the active slot could not be determined\n""contact support forum with this log" ;;
+  esac
+  uboot_part="/dev/mmcblk0p$(( 15 + uboot_slot ))"
+  uboot_copy_cmd="dd if=/dev/mmcblk0p$(( 15 + uboot_slot )) of=/dev/mmcblk0p$(( 15 + (1 - uboot_slot) ))"
+else
+  echo "contents of U-Boot slots 0 and 1 match"
+  uboot_hash="$uboot0_hash"
+  uboot_part="/dev/mmcblk0p15"
 fi
-echo "contents of U-Boot slots 0 and 1 match"
-echo "U-Boot version string: $( get_uboot_version_string /dev/mmcblk0p15 )"
-echo "U-Boot hash: $uboot0_hash"
+echo
+
+echo "active U-Boot version string: $( get_uboot_version_string "$uboot_part" )"
+echo "active U-Boot hash: $uboot_hash"
+echo
 
 local uboot_label
 local uboot_hack
-case "$uboot0_hash" in
+case "$uboot_hash" in
   f3066582267c857e24097b4aecd3e9a1)
     uboot_label="1.3.3 [spf11.1_csu2] Dec 09 2020 (variant f306)"
     uboot_hack="mw 4a910cd0 0a000007 1; mw 4a91dc6c 0a000006 1; go 4a96433c"
@@ -156,12 +172,33 @@ case "$uboot0_hash" in
     break
     ;;
   *)
-    error "unknown U-Boot hash\n""dump U-Boot (/dev/mmcblk0p15) and contact support forum"
+    error "unknown U-Boot hash\n""dump U-Boot ($uboot_part) and contact support forum"
     ;;
 esac
 echo "found known U-Boot"
 echo "U-Boot label: $uboot_label"
 echo
+echo
+
+# Update inactive U-Boot slot
+
+if [[ "$uboot_copy_cmd" != "" ]]; then
+
+  echo "the inactive copy of U-Boot in slot $(( 1 - uboot_slot )) must be updated"
+  echo "to match the active one with the following command:"
+  echo "$uboot_copy_cmd"
+  echo
+
+  pause "about to update the inactive copy of U-Boot"
+
+  $uboot_copy_cmd || error "could not update the inactive copy of U-Boot\n""contact support forum with this log"
+  echo
+
+  echo "success"
+  echo
+  echo
+
+fi
 
 # Configure U-Boot environment
 
