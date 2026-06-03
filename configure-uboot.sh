@@ -100,6 +100,14 @@ echo
 
 # Check U-Boot
 
+local uboot_slot=""
+if [[ -e "/proc/boot_info/0:APPSBL/primaryboot" ]]; then
+  uboot_slot="$( cat "/proc/boot_info/0:APPSBL/primaryboot" )"
+  [[ "$uboot_slot" == "0" || "$uboot_slot" == "1" ]] || uboot_slot=""
+fi
+
+echo "U-Boot active slot: ${uboot_slot:-"unknown"}"
+
 local uboot0_hash="$( cat /dev/mmcblk0p15 | md5sum | cut -d' ' -f1 )"
 local uboot1_hash="$( cat /dev/mmcblk0p16 | md5sum | cut -d' ' -f1 )"
 
