@@ -178,6 +178,7 @@ case "$uboot_hash" in
     # Apparently this U-Boot version eagerly initializes the network, obviating the need for an explicit call.
     #uboot_net_init="go 4a9679f0"
     uboot_net_init=""
+    error "unsupported U-Boot version\n""contact support forum with this log"
     break
     ;;
   *)
